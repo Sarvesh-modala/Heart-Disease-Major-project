@@ -1,0 +1,22 @@
+# Virtual environments
+venv
+venv/
+venv 2/
+venv.nosync/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS / logs
+.DS_Store
+*.log
+
+# Large generated outputs (regenerate by running the pipeline)
+outputs/features/
+outputs/preprocessed/
+outputs/models/
+
+# Dataset images (symlinks to local dataset; see setup_dataset.sh)
+data/heart_mri/
+data/heart_mri_split/**/*.jpg

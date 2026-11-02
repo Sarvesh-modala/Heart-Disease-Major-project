@@ -1,0 +1,10 @@
+                          precision    recall  f1-score   support
+
+  cardiovascular_disease     0.9643    0.9850    0.9745      2193
+          cardiomyopathy     0.9807    0.9807    0.9807      2179
+congenital_heart_disease     0.0000    0.0000    0.0000         0
+                  normal     0.9930    0.9868    0.9899      7514
+
+                accuracy                         0.9854     11886
+               macro avg     0.7345    0.7381    0.7363     11886
+            weighted avg     0.9855    0.9854    0.9854     11886
