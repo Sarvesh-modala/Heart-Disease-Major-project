@@ -1,13 +1,32 @@
 # Heart MRI Classification
 
-Classifies cardiac MRI images into **4 conditions** using a hybrid pipeline of classical computer vision and deep learning:
+Classifies cardiac MRI images into heart conditions using a hybrid pipeline of classical computer vision and deep learning, with a Streamlit web demo for interactive predictions.
 
-| Class | Description |
-|---|---|
-| `cardiovascular_disease` | Coronary artery disease, hypertension-related changes |
-| `cardiomyopathy` | Hypertrophic / dilated myocardial abnormalities |
-| `congenital_heart_disease` | Structural defects present from birth |
-| `normal` | Healthy heart morphology |
+| Class | Description | Images |
+|---|---|---|
+| `cardiovascular_disease` | Coronary artery disease, hypertension-related changes | 10,962 |
+| `cardiomyopathy` | Hypertrophic / dilated myocardial abnormalities | 10,895 |
+| `normal` | Healthy heart morphology | 37,566 |
+| `congenital_heart_disease` | Structural defects present from birth | 0 (reserved) |
+
+> The model has 4 output slots, but the Kaggle dataset contains no congenital heart disease scans, so that class is currently empty. Results below are reported over the 3 classes that have data.
+
+---
+
+## Results
+
+Evaluated on the held-out test split (11,886 images, 20 %):
+
+| Class | Precision | Recall | F1-score | Support |
+|---|---|---|---|---|
+| `cardiovascular_disease` | 0.9643 | 0.9850 | 0.9745 | 2,193 |
+| `cardiomyopathy` | 0.9807 | 0.9807 | 0.9807 | 2,179 |
+| `normal` | 0.9930 | 0.9868 | 0.9899 | 7,514 |
+| **Overall accuracy** | | | **98.54 %** | 11,886 |
+
+![Confusion matrix](outputs/plots/confusion_matrix_3class.png)
+![ROC curves](outputs/plots/roc_curves.png)
+![Preprocessing stages](outputs/plots/preprocessing_stages.png)
 
 ---
 
@@ -62,29 +81,38 @@ pip install -r requirements.txt
 
 ## 2. Download the Dataset
 
-1. Go to the Kaggle dataset page:  
-   **https://www.kaggle.com/datasets/danialsharifrazi/hypertrophic-cardiomyopathy-dataset**
+The MRI images are **not included in this repository** (about 2.7 GB). Download them from Kaggle:  
+**https://www.kaggle.com/datasets/danialsharifrazi/hypertrophic-cardiomyopathy-dataset**
 
-2. Download and unzip the archive.
+**Option A: automatic** (needs a Kaggle API token in `~/.kaggle/kaggle.json`)
 
-3. Organise the images into **four sub-folders** matching the class names exactly:
+```bash
+bash setup_dataset.sh
+```
+
+**Option B: manual**
+
+1. Download and unzip the archive. It contains `Normal/Directory_N/...` and `Sick/Directory_N/...` folders.
+2. Organise the images into class folders. Sick patients are split patient-wise between `cardiomyopathy` and `cardiovascular_disease`, so no patient appears in both classes:
+
+```bash
+python scripts/organize_dataset.py --src "/path/to/Data Set MRI images"   # add --copy to copy instead of symlink
+python scripts/make_split.py                                              # 80/20 stratified split, seed 42
+```
+
+This produces:
 
 ```
 data/
-└── heart_mri/
-    ├── cardiovascular_disease/
-    │   ├── img001.png
-    │   ├── img002.png
-    │   └── ...
-    ├── cardiomyopathy/
-    │   └── ...
-    ├── congenital_heart_disease/
-    │   └── ...
-    └── normal/
-        └── ...
+├── heart_mri/                 ← all images, one folder per class
+│   ├── cardiovascular_disease/
+│   ├── cardiomyopathy/
+│   ├── congenital_heart_disease/   (empty)
+│   └── normal/
+└── heart_mri_split/           ← train/ and test/ with the same class folders
+    ├── manifest_train.txt     ← included in the repo, so the exact split is reproducible
+    └── manifest_test.txt
 ```
-
-> If the Kaggle dataset uses different folder names, rename them to match the four names above, or edit `CLASSES` in `src/config.py`.
 
 ---
 
@@ -156,7 +184,20 @@ print_prediction(result)
 
 ---
 
-## 5. Standalone Feature Extraction
+## 5. Web Demo (Streamlit)
+
+```bash
+pip install streamlit
+streamlit run app.py
+```
+
+Open http://localhost:8501, upload an MRI image (or pick a sample), and the page shows the predicted class, confidence, per-class probabilities, and the preprocessing stages.
+
+`run.sh` / `run.bat` start the Streamlit backend together with the separate `heart-mri-web` frontend, if you have it checked out next to this folder.
+
+---
+
+## 6. Standalone Feature Extraction
 
 ```bash
 # Extract HOG + deep features for both train and test splits
@@ -174,7 +215,7 @@ Feature files are saved under `outputs/features/`:
 
 ---
 
-## 6. Re-evaluate a Saved Checkpoint
+## 7. Re-evaluate a Saved Checkpoint
 
 ```bash
 python main.py evaluate --checkpoint outputs/models/best_model.pth
@@ -182,7 +223,7 @@ python main.py evaluate --checkpoint outputs/models/best_model.pth
 
 ---
 
-## 7. Output Folder Structure
+## 8. Output Folder Structure
 
 ```
 outputs/
@@ -200,14 +241,17 @@ outputs/
 └── plots/
     ├── classification_report.txt   ← Precision / Recall / F1
     ├── confusion_matrix.png        ← Normalised heatmap
+    ├── confusion_matrix_3class.png ← Confusion matrix over the 3 classes with data
     ├── roc_curves.png              ← Per-class ROC + macro AUC
-    └── training_history.png        ← Loss & accuracy curves
+    └── preprocessing_stages.png    ← Example of each preprocessing step
 run.log                             ← Full training log
 ```
 
+> **Not in the repository:** `outputs/models/`, `outputs/features/` and `outputs/preprocessed/` are too large for GitHub (up to 1.1 GB per file). Run `python main.py train` to regenerate them. Only `outputs/plots/` and a few sample images in `outputs/preprocessed_demo/` are committed.
+
 ---
 
-## 8. Configuration
+## 9. Configuration
 
 All tunable constants are in `src/config.py`:
 
@@ -225,7 +269,7 @@ All tunable constants are in `src/config.py`:
 
 ---
 
-## 9. Preprocessing Pipeline Details
+## 10. Preprocessing Pipeline Details
 
 | Step | Method | Purpose |
 |---|---|---|
@@ -238,7 +282,7 @@ All tunable constants are in `src/config.py`:
 
 ---
 
-## 10. Requirements
+## 11. Requirements
 
 ```
 torch>=2.1.0
@@ -255,7 +299,10 @@ opencv-python>=4.8.0
 tqdm>=4.65.0
 pandas>=2.0.0
 joblib>=1.3.0
+PyWavelets>=1.4.0
 ```
+
+For the web demo, also install `streamlit`.
 
 ---
 
